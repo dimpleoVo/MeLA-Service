@@ -1,6 +1,0 @@
-INFO:root:Task 85e049bb-bea9-4ab5-919c-160953d4ba19 started.
-INFO:root:Sandbox Execution: docker run --rm --network none --cpus 1.0 --memory 512m -v F:\MeLA-Service\temp_mela_tasks\85e049bb-bea9-4ab5-919c-160953d4ba19:/app python:3.9-slim python /app/generated_code.py
-INFO:root:Task finished. Result: {'status': 'success', 'output': '¡¾MOCK MODE¡¿: Docker not found. Simulated Optimization Completed.'}
-INFO:root:Task f29eaf0e-3daa-46be-9417-76ace1103ba8 started.
-INFO:root:Sandbox Execution: docker run --rm --network none --cpus 1.0 --memory 512m -v F:\MeLA-Service\temp_mela_tasks\f29eaf0e-3daa-46be-9417-76ace1103ba8:/app python:3.9-slim python /app/generated_code.py
-INFO:root:Task finished. Result: {'status': 'success', 'output': '¡¾MOCK MODE¡¿: Docker not found. Simulated Optimization Completed.'}
