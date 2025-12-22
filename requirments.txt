@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pypdf
+langchain-community
+langchain-text-splitters
+chromadb
+openai
+httpx
+python-multipart
+watchfiles
