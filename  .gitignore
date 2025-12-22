@@ -4,3 +4,5 @@ __pycache__/
 .env
 venv/
 temp_uploads/
+chroma_db_data/
+temp_mela_tasks/
