@@ -1,10 +1,12 @@
 fastapi
 uvicorn
-pypdf
+pydantic
+openai
 langchain-community
 langchain-text-splitters
+pypdf
 chromadb
-openai
 httpx
 python-multipart
-watchfiles
+docker
+load_dotenv

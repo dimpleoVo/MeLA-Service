@@ -1,0 +1,12 @@
+[
+  {"id": 1, "type": "CODE", "query": "写一个Python函数计算阶乘，并计算10的阶乘"},
+  {"id": 2, "type": "CODE", "query": "生成一个快速排序算法，对列表[3,6,8,10,1,2,1]进行排序并打印结果"},
+  {"id": 3, "type": "CODE", "query": "求解TSP问题：5个城市，随机坐标，打印最短路径长度"},
+  {"id": 4, "type": "CODE", "query": "用Python计算圆周率的近似值（蒙特卡洛法），打印结果"},
+  {"id": 5, "type": "CHAT", "query": "你好，请用一句话介绍自己"},
+  {"id": 6, "type": "CHAT", "query": "什么是强化学习？"},
+  {"id": 7, "type": "CHAT", "query": "Transformer架构的核心是什么？"},
+  {"id": 8, "type": "CODE", "query": "打印出100以内的所有素数"},
+  {"id": 9, "type": "CODE", "query": "写一个函数判断字符串'level'是否是回文，打印True/False"},
+  {"id": 10, "type": "CODE", "query": "计算斐波那契数列的第20项"}
+]

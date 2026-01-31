@@ -2,8 +2,10 @@ import os
 import logging
 import subprocess
 import uuid
-import json
+import re
 
+
+# 简单的配置类
 class SimpleConfig:
     def __init__(self, dictionary):
         for key, value in dictionary.items():
@@ -11,85 +13,99 @@ class SimpleConfig:
                 value = SimpleConfig(value)
             setattr(self, key, value)
 
+
 class ELE_Service:
-    def __init__(self, task_config: dict, llm_client, base_temp_dir: str = "./temp_mela_tasks"):
-        # 修改：默认目录改成相对路径 ./temp_mela_tasks，防止 Windows 权限问题
+    def __init__(self, task_config: dict, llm_client, base_temp_dir: str = "/tmp/mela_tasks"):
         self.cfg = SimpleConfig(task_config)
-        self.llm = llm_client
-
+        self.llm = llm_client  # 这里就是 llm.py 里的 llm_service
         self.task_id = str(uuid.uuid4())
-        self.root_dir = os.path.join(base_temp_dir, self.task_id)
-        os.makedirs(self.root_dir, exist_ok=True)
+        logging.basicConfig(level=logging.INFO)
 
-        # 初始化日志
-        logging.basicConfig(filename=os.path.join(self.root_dir, 'run.log'), level=logging.INFO)
+    def _extract_code(self, llm_response: str) -> str:
+        """
+        从 LLM 的回复中提取 ```python ... ``` 之间的代码
+        """
+        # 使用正则提取 Markdown 代码块
+        match = re.search(r"```python(.*?)```", llm_response, re.DOTALL)
+        if match:
+            return match.group(1).strip()
 
-    def _prepare_code_file(self, code_content: str):
-        file_path = os.path.join(self.root_dir, "generated_code.py")
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(code_content)
-        return file_path
+        # 兜底：如果没找到 python 标签，尝试找通用代码块
+        match_general = re.search(r"```(.*?)```", llm_response, re.DOTALL)
+        if match_general:
+            return match_general.group(1).strip()
 
+        return llm_response.replace("```", "").strip()
 
-    def _run_code_in_docker(self, code_path: str):
-        abs_dir = os.path.abspath(self.root_dir)
+    def _generate_code_with_llm(self, query: str) -> str:
+        """
+        让 DeepSeek 编写解决问题的 Python 代码
+        """
+        # 1. 定义 System Prompt (人设)
+        sys_prompt = "你是一个 Python 编程专家。只返回代码，不要解释。"
+
+        # 2. 定义 User Prompt (具体要求)
+        user_prompt = f"""
+        请编写一个完整的 Python 脚本来解决以下问题：
+        "{query}"
+
+        要求：
+        1. 代码必须是完整的、可运行的。
+        2. 必须将最终结果通过 print() 打印到控制台。
+        3. 不要使用 input() 等待用户输入。
+        4. 引入必要的库（如 math, random 等）。
+        5. 代码必须包裹在 ```python 和 ``` 之间。
+        """
+
+        logging.info(f"🤖 Asking DeepSeek to write code for: {query}")
+
+        #  关键调用：使用我们在 llm.py 新增的 chat 方法
+        response = self.llm.chat(prompt=user_prompt, system_prompt=sys_prompt)
+
+        return self._extract_code(response)
+
+    def _run_code_in_docker(self, code_content: str):
+        """
+        流式注入代码到 Docker 容器
+        """
         cmd = [
-            "docker", "run", "--rm",
-            "--network", "none",
-            "--cpus", "1.0",
-            "--memory", "512m",
-            "-v", f"{abs_dir}:/app",
-            "python:3.9-slim",
-            "python", "/app/generated_code.py"
+            "docker", "run", "--rm", "-i", "--network", "none",
+            "--cpus", "1.0", "--memory", "512m",
+            "python:3.9-slim", "python", "-"
         ]
         logging.info(f"Sandbox Execution: {' '.join(cmd)}")
-
         try:
-            # 这里的 subprocess.run 可能会抛出 FileNotFoundError (如果没装Docker)
-            # 或者 TimeoutExpired
+            # input=code_content 是核心，直接把代码喂给 stdin
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=10
+                cmd, input=code_content, capture_output=True, text=True, timeout=60
             )
             if result.returncode == 0:
                 return {"status": "success", "output": result.stdout}
             else:
                 return {"status": "error", "error": result.stderr}
-        except FileNotFoundError:
-             # 专门捕获没装 Docker 的情况
-             raise FileNotFoundError("Docker executable not found")
         except subprocess.TimeoutExpired:
             return {"status": "timeout", "error": "Code execution timed out"}
         except Exception as e:
             return {"status": "system_error", "error": str(e)}
 
-    def run(self):
-        logging.info(f"Task {self.task_id} started.")
-        generated_code = """
-def solve_tsp(points):
-    return "Optimized Path Found"
-print(solve_tsp([]))
-"""
-        try:
-            code_path = self._prepare_code_file(generated_code)
-        except Exception as e:
-            logging.error(f"File system error: {e}")
-            return {"status": "failed", "error": "File write failed"}
 
-        try:
-            # 尝试调用真实 Docker
-            execution_result = self._run_code_in_docker(code_path)
-        except Exception as e:
-            # --- MOCK 触发点 ---
-            # 只要上面报错 (没装 Docker)，就进这里
-            # print 是为了让你在控制台看到效果
-            print(f" [Mock Triggered] Docker 环境未就绪: {e}")
-            execution_result = {
-                "status": "success",
-                "output": "【MOCK MODE】: Docker not found. Simulated Optimization Completed."
-            }
 
-        logging.info(f"Task finished. Result: {execution_result}")
-        return execution_result
+    def run(self, query: str = "Solve TSP"):
+            logging.info(f"Task {self.task_id} started. Query: {query}")
+
+            # 1. 真·LLM 代码生成
+            try:
+                generated_code = self._generate_code_with_llm(query)
+                logging.info("Code generated successfully.")
+            except Exception as e:
+                logging.error(f"LLM Generation failed: {e}")
+                return {"status": "llm_error", "error": str(e)}
+
+            # 2. Docker 执行
+            execution_result = self._run_code_in_docker(generated_code)
+
+            # 把生成的代码也放进结果里！
+            execution_result["generated_code"] = generated_code
+
+            logging.info(f"Task finished. Result: {execution_result}")
+            return execution_result

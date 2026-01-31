@@ -1,0 +1,16 @@
+@"
+.env
+.env.*
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.idea/
+.vscode/
+*.iml
+*.xml
+chroma_db/
+chroma_db_data/
+temp_mela_tasks/
+locustfile.py
+"@ | Out-File -Encoding utf8 .gitignore

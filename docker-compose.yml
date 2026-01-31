@@ -1,8 +1,21 @@
 version: '3.8'
+
 services:
-  mela-service:
+  mela-backend:
     build: .
+    container_name: mela_service
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     volumes:
+      # 🔥 核心：把宿主机的 Docker 能力借给容器
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 挂载代码，方便修改
       - .:/app
+      # 持久化向量数据库
+      - ./chroma_db:/app/chroma_db_data
+    environment:
+      # 在这里填你的 DeepSeek Key，比写在代码里安全
+      - DEEPSEEK_API_KEY=sk-cd9ea69cb86d4590b6bd6fb0eb9d14f0
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
